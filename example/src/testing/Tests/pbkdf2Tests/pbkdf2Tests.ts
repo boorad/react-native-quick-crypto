@@ -87,7 +87,7 @@ describe('pbkdf2', () => {
   // eslint-disable-next-line @typescript-eslint/no-shadow
   var Buffer = require('safe-buffer').Buffer;
 
-  it(' defaults to sha1 and handles buffers', (done: Done) => {
+  it('defaults to sha1 and handles buffers', (done: Done) => {
     var resultSync = QuickCrypto.pbkdf2Sync('password', 'salt', 1, 32);
     expect(ab2str(resultSync)).to.eql(
       '0c60c80f961f0e71f3a9b524af6012062fe037a6e0f0eb94fe8fc46bdc637164'
@@ -245,5 +245,21 @@ describe('pbkdf2', () => {
         .to.throw(new RegExp(f.exception));
       });
     }); */
+  });
+
+  it('fns should not be undefined, #322', () => {
+    expect(QuickCrypto.pbkdf2).to.not.be.undefined;
+    expect(QuickCrypto.pbkdf2Sync).to.not.be.undefined;
+
+    var resultSync = QuickCrypto.pbkdf2Sync(
+      'password',
+      'salt',
+      2048,
+      64,
+      'SHA-512'
+    );
+    expect(ab2str(resultSync)).to.eql(
+      '91be23564f09fc855c82ce84a223ebe7d63d8b49d69372593a0d9ed39e143c83e1ab2f722a5ddb969feefc88403f7e2afe1afb8b2f0e6b20add0fb7b28368807'
+    );
   });
 });
