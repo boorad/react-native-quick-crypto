@@ -26,7 +26,7 @@ inline bool CheckIsInt32(const jsi::Value &value) {
   if (!value.isNumber()) {
     return false;
   }
-  double d = value.asNumber();
+  double d = value.getNumber();
   return (d >= std::numeric_limits<int32_t>::lowest() && d <= std::numeric_limits<int32_t>::max());
 }
 

@@ -114,13 +114,12 @@ class ManagedEVPPKey {
                                             unsigned int *offset,
                                             bool allow_key_object);
 
-  static jsi::Value ToEncodedPublicKey(jsi::Runtime &runtime,
-                                       ManagedEVPPKey key,
-                                       const PublicKeyEncodingConfig &config);
+  static std::shared_ptr<KeyObjectHandle> ToEncodedPublicKey(ManagedEVPPKey key,
+                                                             const PublicKeyEncodingConfig& config);
 
-  static jsi::Value ToEncodedPrivateKey(jsi::Runtime &runtime,
-                                        ManagedEVPPKey key,
-                                        const PrivateKeyEncodingConfig &config);
+
+  static std::shared_ptr<KeyObjectHandle> ToEncodedPrivateKey(ManagedEVPPKey key,
+                                                              const PrivateKeyEncodingConfig &config);
 
  private:
    size_t size_of_private_key() const;
@@ -135,9 +134,8 @@ class KeyObjectData {
  public:
   static std::shared_ptr<KeyObjectData> CreateSecret(ByteSource key);
 
-  static std::shared_ptr<KeyObjectData> CreateAsymmetric(
-      KeyType type,
-      const ManagedEVPPKey& pkey);
+  static std::shared_ptr<KeyObjectData> CreateAsymmetric(KeyType type,
+                                                         const ManagedEVPPKey& pkey);
 
   KeyType GetKeyType() const;
 
@@ -168,8 +166,9 @@ class JSI_EXPORT KeyObjectHandle: public jsi::HostObject {
     jsi::Value get(jsi::Runtime &rt, const jsi::PropNameID &propNameID);
     const std::shared_ptr<KeyObjectData>& Data();
 
-    static std::shared_ptr<KeyObjectHandle> Create(jsi::Runtime &rt,
-                                                   std::shared_ptr<KeyObjectData> data);
+    static std::shared_ptr<KeyObjectHandle> Create(std::string data);
+    static std::shared_ptr<KeyObjectHandle> Create(ByteSource data);
+    static std::shared_ptr<KeyObjectHandle> Create(std::shared_ptr<KeyObjectData> data);
 
  protected:
     jsi::Value Export(jsi::Runtime &rt);

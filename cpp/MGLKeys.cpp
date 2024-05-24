@@ -251,24 +251,23 @@ ParseKeyResult ParsePrivateKey(EVPKeyPointer* pkey,
   return ParseKeyResult::kParseKeyFailed;
 }
 
-jsi::Value BIOToStringOrBuffer(jsi::Runtime& rt, BIO* bio, PKFormatType format) {
+std::shared_ptr<KeyObjectHandle> BIOToStringOrBuffer(BIO* bio, PKFormatType format) {
   BUF_MEM* bptr;
   BIO_get_mem_ptr(bio, &bptr);
   if (format == kKeyFormatPEM) {
     // PEM is an ASCII format, so we will return it as a string.
-    return toJSI(rt, std::string(bptr->data, bptr->length));
+    return KeyObjectHandle::Create(std::string(bptr->data, bptr->length));
   } else {
     CHECK_EQ(format, kKeyFormatDER);
     // DER is binary, return it as a buffer.
     ByteSource::Builder out(bptr->length);
     memcpy(out.data<void>(), bptr->data, bptr->length);
-    return toJSI(rt, std::move(out).release());
+    return KeyObjectHandle::Create(std::move(out).release());
   }
 }
 
-jsi::Value WritePrivateKey(
-    jsi::Runtime& runtime, EVP_PKEY* pkey,
-    const PrivateKeyEncodingConfig& config) {
+std::shared_ptr<KeyObjectHandle> WritePrivateKey(EVP_PKEY* pkey,
+                                                 const PrivateKeyEncodingConfig& config) {
   BIOPointer bio(BIO_new(BIO_s_mem()));
   CHECK(bio);
 
@@ -352,10 +351,10 @@ jsi::Value WritePrivateKey(
   }
 
   if (err) {
-    throw jsi::JSError(runtime, "Failed to encode private key");
+    throw std::runtime_error("Failed to encode private key");
   }
 
-  return BIOToStringOrBuffer(runtime, bio.get(), config.format_);
+  return BIOToStringOrBuffer(bio.get(), config.format_);
 }
 
 bool WritePublicKeyInner(EVP_PKEY* pkey, const BIOPointer& bio,
@@ -386,17 +385,16 @@ bool WritePublicKeyInner(EVP_PKEY* pkey, const BIOPointer& bio,
   }
 }
 
-jsi::Value WritePublicKey(
-    jsi::Runtime& runtime, EVP_PKEY* pkey,
-    const PublicKeyEncodingConfig& config) {
+std::shared_ptr<KeyObjectHandle> WritePublicKey(EVP_PKEY* pkey,
+                          const PublicKeyEncodingConfig& config) {
   BIOPointer bio(BIO_new(BIO_s_mem()));
   CHECK(bio);
 
   if (!WritePublicKeyInner(pkey, bio, config)) {
-    throw jsi::JSError(runtime, "Failed to encode public key");
+    throw std::runtime_error("Failed to encode public key");
   }
 
-  return BIOToStringOrBuffer(runtime, bio.get(), config.format_);
+  return BIOToStringOrBuffer(bio.get(), config.format_);
 }
 
 jsi::Value ExportJWKSecretKey(jsi::Runtime &rt,
@@ -554,17 +552,14 @@ jsi::Value ExportJWKInner(jsi::Runtime &rt,
   }
 }
 
-jsi::Value ManagedEVPPKey::ToEncodedPublicKey(jsi::Runtime& rt,
-                                              ManagedEVPPKey key,
-                                              const PublicKeyEncodingConfig& config) {
+std::shared_ptr<KeyObjectHandle> ManagedEVPPKey::ToEncodedPublicKey(ManagedEVPPKey key,
+                                                                    const PublicKeyEncodingConfig& config) {
   if (!key) return {};
   if (config.output_key_object_) {
     // Note that this has the downside of containing sensitive data of the
     // private key.
     auto data = KeyObjectData::CreateAsymmetric(kKeyTypePublic, std::move(key));
-    auto handle = KeyObjectHandle::Create(rt, data);
-    auto out = jsi::Object::createFromHostObject(rt, handle);
-    return jsi::Value(std::move(out));
+    return KeyObjectHandle::Create(data);
   } else
   if (config.format_ == kKeyFormatJWK) {
     throw std::runtime_error("ToEncodedPublicKey 2 (JWK) not implemented from node");
@@ -574,18 +569,15 @@ jsi::Value ManagedEVPPKey::ToEncodedPublicKey(jsi::Runtime& rt,
     // return ExportJWKInner(env, data, *out, false);
   }
 
-  return WritePublicKey(rt, key.get(), config);
+  return WritePublicKey(key.get(), config);
 }
 
-jsi::Value ManagedEVPPKey::ToEncodedPrivateKey(jsi::Runtime& rt,
-                                                    ManagedEVPPKey key,
-                                                    const PrivateKeyEncodingConfig& config) {
+std::shared_ptr<KeyObjectHandle> ManagedEVPPKey::ToEncodedPrivateKey(ManagedEVPPKey key,
+                                                                     const PrivateKeyEncodingConfig& config) {
   if (!key) return {};
   if (config.output_key_object_) {
     auto data = KeyObjectData::CreateAsymmetric(kKeyTypePrivate, std::move(key));
-    auto handle = KeyObjectHandle::Create(rt, data);
-    auto out = jsi::Object::createFromHostObject(rt, handle);
-    return jsi::Value(std::move(out));
+    return KeyObjectHandle::Create(data);
   } else
   if (config.format_ == kKeyFormatJWK) {
     throw std::runtime_error("ToEncodedPrivateKey 2 (JWK) not implemented from node");
@@ -595,7 +587,7 @@ jsi::Value ManagedEVPPKey::ToEncodedPrivateKey(jsi::Runtime& rt,
     // return ExportJWKInner(env, data, *out, false);
   }
 
-  return WritePrivateKey(rt, key.get(), config);
+  return WritePrivateKey(key.get(), config);
 }
 
 NonCopyableMaybe<PrivateKeyEncodingConfig>
@@ -895,12 +887,24 @@ jsi::Value KeyObjectHandle::get(
 //   registry->Register(Equals);
 // }
 
-std::shared_ptr<KeyObjectHandle> KeyObjectHandle::Create(jsi::Runtime &rt,
-                                                         std::shared_ptr<KeyObjectData> data) {
+std::shared_ptr<KeyObjectHandle> KeyObjectHandle::Create(std::string data) {
+  auto handle = std::make_shared<KeyObjectHandle>();
+  handle->string_ = data;
+  return handle;
+}
+
+std::shared_ptr<KeyObjectHandle> KeyObjectHandle::Create(ByteSource data) {
+  auto handle = std::make_shared<KeyObjectHandle>();
+  handle->bytesource_ = data;
+  return handle;
+}
+
+std::shared_ptr<KeyObjectHandle> KeyObjectHandle::Create(std::shared_ptr<KeyObjectData> data) {
   auto handle = std::make_shared<KeyObjectHandle>();
   handle->data_ = data;
   return handle;
 }
+
 
 const std::shared_ptr<KeyObjectData>& KeyObjectHandle::Data() {
   return this->data_;
@@ -1229,17 +1233,13 @@ jsi::Value KeyObjectHandle::ExportSecretKey(jsi::Runtime &rt) const {
 jsi::Value KeyObjectHandle::ExportPublicKey(
     jsi::Runtime& rt,
     const PublicKeyEncodingConfig& config) const {
-  return WritePublicKey(rt,
-    data_->GetAsymmetricKey().get(),
-    config);
+  xxx return WritePublicKey(data_->GetAsymmetricKey().get(), config);
 }
 
 jsi::Value KeyObjectHandle::ExportPrivateKey(
     jsi::Runtime &rt,
     const PrivateKeyEncodingConfig& config) const {
-  return WritePrivateKey(rt,
-    data_->GetAsymmetricKey().get(),
-    config);
+  xxx return WritePrivateKey(data_->GetAsymmetricKey().get(), config);
 }
 
 jsi::Value KeyObjectHandle::ExportJWK(jsi::Runtime &rt) {

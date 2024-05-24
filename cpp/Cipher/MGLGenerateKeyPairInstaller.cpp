@@ -38,27 +38,15 @@ FieldDefinition getGenerateKeyPairFieldDefinition(
   return buildPair(
       "generateKeyPair", JSIF([=]) {
 
-        KeyVariant variant =
-          static_cast<KeyVariant>((int)arguments[0].asNumber());
-        std::shared_ptr<RsaKeyPairGenConfig> rsaConfig;
-        std::shared_ptr<EcKeyPairGenConfig> ecConfig;
-
-        // switch on variant to get proper config from arguments
-        // outside of lambda 🤮
-        if (variant == kvRSA_SSA_PKCS1_v1_5 ||
-            variant == kvRSA_PSS ||
-            variant == kvRSA_OAEP
-        ) {
-          rsaConfig = std::make_shared<RsaKeyPairGenConfig>(
-            prepareRsaKeyGenConfig(runtime, arguments));
-        } else
-        if (variant == kvEC) {
-          ecConfig = std::make_shared<EcKeyPairGenConfig>(
-            prepareEcKeyGenConfig(runtime, arguments));
-        } else {
-          throw std::runtime_error("KeyVariant not implemented"
-            + std::to_string((int)variant));
+        if (!arguments[0].isNumber()) {
+          throw jsi::JSError(runtime, "KeyVariant is not a number");
         }
+        KeyVariant variant =
+          static_cast<KeyVariant>((int)arguments[0].getNumber());
+        KeyPairGen keyPairGen;
+
+        // prepare configuration
+        keyPairGen->PrepareConfig(runtime, arguments);
 
         auto promiseConstructor =
             runtime.global().getPropertyAsFunction(runtime, "Promise");
@@ -69,7 +57,7 @@ FieldDefinition getGenerateKeyPairFieldDefinition(
                 runtime,
                 jsi::PropNameID::forAscii(runtime, "executor"),
                 4,
-                [&jsCallInvoker, variant, rsaConfig, ecConfig](
+                [&jsCallInvoker, keyPairGen](
                     jsi::Runtime &runtime, const jsi::Value &,
                     const jsi::Value *promiseArgs, size_t) -> jsi::Value {
                   auto resolve =
@@ -78,11 +66,11 @@ FieldDefinition getGenerateKeyPairFieldDefinition(
                       std::make_shared<jsi::Value>(runtime, promiseArgs[1]);
 
                   std::thread t([&runtime, resolve, reject, jsCallInvoker,
-                      variant, rsaConfig, ecConfig]() {
+                      variant, config]() {
                     m.lock();
                     try {
                       jsCallInvoker->invokeAsync([&runtime, resolve,
-                          variant, rsaConfig, ecConfig]() {
+                          variant, config]() {
                         std::pair<jsi::Value, jsi::Value> keys;
 
                         // switch on variant to get proper generateKeyPair
@@ -90,10 +78,10 @@ FieldDefinition getGenerateKeyPairFieldDefinition(
                             variant == kvRSA_PSS ||
                             variant == kvRSA_OAEP
                         ) {
-                          keys = generateRsaKeyPair(runtime, rsaConfig);
+                          keys = generateRsaKeyPair(runtime, config);
                         } else
                         if (variant == kvEC) {
-                          keys = generateEcKeyPair(runtime, ecConfig);
+                          keys = generateEcKeyPair(runtime, config);
                         } else {
                           throw std::runtime_error("KeyVariant not implemented"
                             + std::to_string((int)variant));
@@ -131,4 +119,23 @@ FieldDefinition getGenerateKeyPairFieldDefinition(
         return promise;
       });
 }
+
+KeyPairGen GetKeyPairGen(KeyVariant variant) {
+  switch (variant) {
+    case kvRSA_SSA_PKCS1_v1_5:
+    case kvRSA_PSS:
+    case kvRSA_OAEP:
+      return KeyPairGen<RsaKeyPairGen>();
+      break;
+    case kvEC:
+      return KeyPairGen<EcKeyPairGen>();
+      break;
+    default:
+      throw std::runtime_error("KeyVariant not implemented"
+        + std::to_string((int)variant));
+  }
+
+
+};
+
 }  // namespace margelo
