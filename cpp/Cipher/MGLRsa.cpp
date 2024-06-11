@@ -268,7 +268,8 @@ std::shared_ptr<KeyObjectData> ImportJWKRsaKey(jsi::Runtime &rt,
   EVPKeyPointer pkey(EVP_PKEY_new());
   CHECK_EQ(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()), 1);
 
-  return KeyObjectData::CreateAsymmetric(type, ManagedEVPPKey(std::move(pkey)));
+  auto key = KeyObjectData::CreateAsymmetric(type, ManagedEVPPKey(std::move(pkey)));
+  return std::make_shared<KeyObjectData>(key);
 }
 
 jsi::Value GetRsaKeyDetail(jsi::Runtime &rt,

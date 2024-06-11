@@ -4,15 +4,16 @@
 
 #include <optional>
 
-#include "MGLKeys.h"
 #ifdef ANDROID
 #include "JSIUtils/MGLJSIUtils.h"
 #include "JSIUtils/MGLTypedArray.h"
 #include "Utils/MGLUtils.h"
+#include "Cipher/MGLKeys.h"
 #else
 #include "MGLJSIUtils.h"
 #include "MGLTypedArray.h"
 #include "MGLUtils.h"
+#include "MGLKeys.h"
 #endif
 
 namespace margelo {

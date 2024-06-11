@@ -9,11 +9,13 @@
 #include <string>
 #include <utility>
 
-#include "MGLKeys.h"
+
 #ifdef ANDROID
+#include "Cipher/ManagedEVPPKey.h"
 #include "JSIUtils/MGLSmartHostObject.h"
 #include "Utils/MGLUtils.h"
 #else
+#include "ManagedEVPPKey.h"
 #include "MGLSmartHostObject.h"
 #include "MGLUtils.h"
 #endif

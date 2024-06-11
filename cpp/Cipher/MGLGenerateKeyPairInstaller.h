@@ -13,8 +13,6 @@
 
 #include <memory>
 
-#include "MGLKeys.h"
-
 #ifdef ANDROID
 #include "Cipher/MGLRsa.h"
 #include "JSIUtils/MGLSmartHostObject.h"

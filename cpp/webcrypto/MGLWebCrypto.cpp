@@ -9,16 +9,17 @@
 
 #include <memory>
 #include <utility>
-#include "MGLKeys.h"
 
 #ifdef ANDROID
 #include "JSIUtils/MGLJSIMacros.h"
 #include "webcrypto/crypto_ec.h"
 #include "Utils/MGLUtils.h"
+#include "Cipher/MGLKeys.h"
 #else
 #include "MGLUtils.h"
 #include "MGLJSIMacros.h"
 #include "crypto_ec.h"
+#include "MGLKeys.h"
 #endif
 
 namespace margelo {
