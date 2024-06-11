@@ -5,17 +5,67 @@
 #include <openssl/evp.h>
 
 #include "MGLJSIMacros.h"
-// #include "MGLJSIUtils.h"
-#include "MGLKeys.h"
+#include "MGLJSIUtils.h"
 // #include "MGLUtils.h"
 
 namespace margelo {
 
 namespace jsi = facebook::jsi;
 
+enum PKEncodingType {
+  // RSAPublicKey / RSAPrivateKey according to PKCS#1.
+  kKeyEncodingPKCS1,
+  // PrivateKeyInfo or EncryptedPrivateKeyInfo according to PKCS#8.
+  kKeyEncodingPKCS8,
+  // SubjectPublicKeyInfo according to X.509.
+  kKeyEncodingSPKI,
+  // ECPrivateKey according to SEC1.
+  kKeyEncodingSEC1
+};
+
+enum PKFormatType { kKeyFormatDER, kKeyFormatPEM, kKeyFormatJWK };
+
+enum KeyType { kKeyTypeSecret, kKeyTypePublic, kKeyTypePrivate };
+
+enum KeyEncodingContext {
+  kKeyContextInput,
+  kKeyContextExport,
+  kKeyContextGenerate
+};
+
+enum class ParseKeyResult {
+  kParseKeyOk,
+  kParseKeyNotRecognized,
+  kParseKeyNeedPassphrase,
+  kParseKeyFailed
+};
+
+enum class WebCryptoKeyExportStatus {
+  OK,
+  INVALID_KEY_TYPE,
+  FAILED
+};
+
+struct AsymmetricKeyEncodingConfig {
+  bool output_key_object_ = false;
+  PKFormatType format_ = kKeyFormatDER;
+  std::optional<PKEncodingType> type_ = std::nullopt;
+};
+
+using PublicKeyEncodingConfig = AsymmetricKeyEncodingConfig;
+
+struct PrivateKeyEncodingConfig : public AsymmetricKeyEncodingConfig {
+  const EVP_CIPHER *cipher_;
+  // The ByteSource alone is not enough to distinguish between "no passphrase"
+  // and a zero-length passphrase (which can be a null pointer), therefore, we
+  // use a NonCopyableMaybe.
+  NonCopyableMaybe<ByteSource> passphrase_;
+};
+
 // Here node uses extends MemoryRetainer no clue what that is, something with
 // Snapshots stripped it for our implementation but if something doesn't work,
-// you know why
+// you know why (osp)
+
 class ManagedEVPPKey {
  public:
   ManagedEVPPKey() {}
@@ -48,19 +98,20 @@ class ManagedEVPPKey {
                                             unsigned int *offset,
                                             bool allow_key_object);
 
-  static JSVariant ToEncodedPublicKey(ManagedEVPPKey key,
-                                      const PublicKeyEncodingConfig& config);
-
-
-  static JSVariant ToEncodedPrivateKey(ManagedEVPPKey key,
-                                       const PrivateKeyEncodingConfig &config);
-
  private:
    size_t size_of_private_key() const;
    size_t size_of_public_key() const;
 
   EVPKeyPointer pkey_;
 };
+
+JSVariant BIOToStringOrBuffer(BIO* bio, PKFormatType format);
+
+JSVariant WritePublicKey(EVP_PKEY* pkey,
+                         const PublicKeyEncodingConfig& config);
+
+JSVariant WritePrivateKey(EVP_PKEY* pkey,
+                          const PrivateKeyEncodingConfig& config);
 
 }  // namespace margelo
 

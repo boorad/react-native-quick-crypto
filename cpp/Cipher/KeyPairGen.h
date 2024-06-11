@@ -2,7 +2,7 @@
 #define KeyPairGen_h
 
 #include <jsi/jsi.h>
-#include "MGLJSIUtils.h"
+#include "JSVariant.h"
 #include "ManagedEVPPKey.h"
 
 #ifdef ANDROID

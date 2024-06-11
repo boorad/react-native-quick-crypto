@@ -5,7 +5,7 @@
 
 #include "KeyObjectData.h"
 #include "MGLJSIMacros.h"
-#include "MGLJSIUtils.h"
+#include "JSVariant.h"
 #include "MGLRsa.h"
 #include "crypto_ec.h"
 
