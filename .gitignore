@@ -46,6 +46,8 @@ node_modules/
 npm-debug.log
 yarn-debug.log
 yarn-error.log
+.yarn/*
+vendor/
 
 # BUCK
 buck-out/
@@ -150,3 +152,5 @@ lint/tmp/
 
 # Release
 .npmrc
+
+example0/
