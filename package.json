@@ -37,7 +37,8 @@
     "example": "cd example && bun start",
     "pods": "cd example && bun install && bun pods",
     "bootstrap": "bun install && bun pods && bun example",
-    "test": "jest"
+    "test": "jest",
+    "clean": "rm -rf lib node_modules example/android/build example/ios/build example/ios/Pods packages"
   },
   "keywords": [
     "react-native",
